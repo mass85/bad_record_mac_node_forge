@@ -3,7 +3,7 @@ This repo presents a bug related to node-forge TLS implementation.
 Run:
  ```
 npm i
-./test
+./test.sh
 ```
  
 On Kubuntu 18.04.4 with node v10.16.0 I get:
