@@ -118,9 +118,9 @@ yargs
       .option('fileIn', {describe: 'path to file that will be read'})
       .option('fileOut', {describe: 'path to file that will be written'})
   }, createClient)
-  .command('server [port]', 'read message from file', yargs => {
+  .command('server [port]', 'act as server', yargs => {
     yargs
-      .positional('port', {describe: 'port of the recipient', default: 8124})
+      .positional('port', {describe: 'port to bound to', default: 8124})
       .option('echo', {describe: 'echo received bytes back to client'})
   }, createServer)
   .argv;
