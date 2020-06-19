@@ -12,7 +12,8 @@ module.exports = function createTlsPeer(options) {
     cipherSuites: [
       forge.tls.CipherSuites.TLS_RSA_WITH_AES_128_CBC_SHA,
       forge.tls.CipherSuites.TLS_RSA_WITH_AES_256_CBC_SHA],
-    virtualHost: `${peerName} host`,
+    //virtualHost: `${peerName} host`,
+    virtualHost: `TLS client`,
     verifyClient: !!options.server,
     verify: function (connection, verified, depth, certs) {
       console.log(
