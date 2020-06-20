@@ -19,14 +19,14 @@ function createClient(argv) {
   socket.on('data', (data) => {
     //console.log(data.toString());
     console.log('socket received, length: ', data.length);
-    tls.processTls(data);
+    tls.processTls(data.toString('binary'));
   });
   socket.on('end', () => {
     console.log('disconnected from TCP server');
     tls.reset();
   });
   tls.on('sendTls', data => {
-    socket.write(data);
+    socket.write(data, 'binary');
   });
   const outStream = argv.fileOut ? fs.createWriteStream(argv.fileOut) : null;
   tls.on('connected', () => {
@@ -69,14 +69,14 @@ function createServer(argv) {
     const tls = createTlsPeer({server: true, cert: serverCert, key: serverKey, caCert});
     socket.on('data', (data) => {
       //console.log(data.toString());
-      tls.processTls(data);
+      tls.processTls(data.toString('binary'));
     });
     socket.on('end', () => {
       console.log('disconnected from TCP client');
       tls.reset();
     });
     tls.on('sendTls', data => {
-      socket.write(data);
+      socket.write(data, 'binary');
     });
     tls.on('connected', () => {
       console.log('TLS handshake finished');
