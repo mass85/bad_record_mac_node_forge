@@ -4,23 +4,34 @@ const fs = require('fs');
 const net = require('net');
 const createTlsPeer = require('./tlsPeer');
 
-function hexdump(buffer, blockSize) {
+// data can be a binary encoded string or a buffer of binary data
+function hexdump(data, blockSize) {
   blockSize = blockSize || 16;
   var lines = [];
   var hex = "0123456789ABCDEF";
+  const buffer = typeof data === "string" ? Buffer.from(data, 'binary') : data;
   for (var b = 0; b < buffer.length; b += blockSize) {
     var block = buffer.slice(b, Math.min(b + blockSize, buffer.length));
     var addr = ("0000" + b.toString(16)).slice(-4);
-    var codes = block.split('').map(function (ch) {
-      var code = ch.charCodeAt(0);
-      return " " + hex[(0xF0 & code) >> 4] + hex[0x0F & code];
-    }).join("");
-
-
-    codes += " ".repeat(blockSize - block.length);
-    var chars = block.replace(/[\x00-\x1F\x20]/g, '.');
-    chars += " ".repeat(blockSize - block.length);
-    lines.push(addr + " " + codes + " " + chars);
+    let codes = "", chars = "";
+    for(let i = 0; i < block.length; i++) {
+      // codes += block[i] > 15 ? " " : " 0";
+      // codes += block[i].toString(16);
+      codes += " " + hex[(0xF0 & block[i]) >> 4] + hex[0x0F & block[i]];
+      chars += block[i] > 31 && block[i] < 127 ? String.fromCharCode(block[i]) : '.';
+    }
+    const alignment = " ".repeat(3*(blockSize - block.length));
+    lines.push(addr + " " + codes + " " + alignment + chars);
+    // var codes = block.split('').map(function (ch) {
+    //   var code = ch.charCodeAt(0);
+    //   return " " + hex[(0xF0 & code) >> 4] + hex[0x0F & code];
+    // }).join("");
+    //
+    //
+    // codes += " ".repeat(blockSize - block.length);
+    // var chars = block.replace(/[\x00-\x1F\x20]/g, '.');
+    // chars += " ".repeat(blockSize - block.length);
+    // lines.push(addr + " " + codes + " " + chars);
   }
 
   return lines.join("\n");
@@ -40,7 +51,7 @@ function createClient(argv) {
   socket.on('data', (data) => {
     //console.log(data.toString());
     console.log('socket received, length: ', data.length);
-    tls.processTls(data);
+    tls.processTls(data.toString('binary'));
   });
   socket.on('end', () => {
     console.log('disconnected from TCP server');
@@ -49,7 +60,8 @@ function createClient(argv) {
   tls.on('sendTls', data => {
     console.log('socket sends, length: ', data.length)
     console.log(hexdump(data, 8));
-    socket.write(data);
+    socket.write(data, 'binary');
+    //sendInChunks(socket, data, 20);
   });
   const outStream = argv.fileOut ? fs.createWriteStream(argv.fileOut) : null;
   const msg = {
@@ -118,6 +130,22 @@ function createClient(argv) {
   });
 }
 
+function sendInChunks(socket, data, chunkSize) {
+  const chunks = [];
+  let cntr = 0;
+  while(data)
+  {
+    const size = Math.min(chunkSize, data.length);
+    const chunk = data.substr(0, size);
+    chunks.push(chunk);
+    data = data.substr(size);
+    setTimeout(() => {
+      console.log('(delayed)writing chunk into socket, length:', chunk.length);
+      socket.write(chunk, 'binary');
+    }, 1000*cntr++);
+  }
+}
+
 function createServer(argv) {
   const serverCert = fs.readFileSync('./server.crt').toString();
   const serverKey = fs.readFileSync('./server.key').toString();
@@ -126,14 +154,16 @@ function createServer(argv) {
     const tls = createTlsPeer({server: true, cert: serverCert, key: serverKey, caCert});
     socket.on('data', (data) => {
       console.log("received data length: ", data.length);
-      tls.processTls(data);
+      console.log(hexdump(data, 8));
+      tls.processTls(data.toString('binary'));
     });
     socket.on('end', () => {
       console.log('disconnected from TCP client');
       tls.reset();
     });
     tls.on('sendTls', data => {
-      socket.write(data);
+      console.log('write socket', data.length);
+      socket.write(data, 'binary');
     });
     tls.on('connected', () => {
       console.log('TLS handshake finished');
